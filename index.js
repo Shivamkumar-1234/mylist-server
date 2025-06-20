@@ -46,21 +46,12 @@ app.use(helmet({
 
 
 
-// app.use(cors({
-//   origin: [
-//     process.env.CORS_ORIGIN, 
-//     'https://my-list-dun.vercel.app',
-//     'http://localhost:3000'
-//   ],
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//   allowedHeaders: ['Content-Type', 'Authorization'],
-//   credentials: true,
-//   exposedHeaders: ['set-cookie']
-// }));
-
-
-
 app.use(cors({
+  origin: [
+    process.env.CORS_ORIGIN, 
+    'https://my-list-dun.vercel.app',
+    'http://localhost:3000'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
