@@ -181,7 +181,7 @@ res.cookie('token', appToken, {
   maxAge: 30 * 24 * 60 * 60 * 1000,
   path: '/',
   domain: process.env.NODE_ENV === 'production' 
-    ? '.onrender.com' // Production domain
+    ? 'https://mylist-server.onrender.com' // Production domain
     : undefined // Development (localhost)
 });
 
