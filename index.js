@@ -258,6 +258,7 @@ const morgan = require("morgan");
 const pool = require("./db");
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
+const cookieSession = require("cookie-session");
 
 dotenv.config();
 
@@ -289,25 +290,27 @@ const allowedOrigins = [
   'http://localhost:3000'
 ];
 
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  exposedHeaders: ['set-cookie']
-}));
+
+
+app.use(
+  cors({
+    origin: "https://my-list-dun.vercel.app", // 🔁 Replace with your Vercel domain
+    credentials: true,
+  })
+);
+
+
+
+
+
 
 app.use(cookieParser());
 app.use(express.json({ limit: '10kb' }));
 app.use(morgan('dev'));
+
+
+
+
 
 // Token verification middleware
 const authenticateToken = async (req, res, next) => {
@@ -398,16 +401,16 @@ app.post('/user/auth/google', async (req, res) => {
     );
 
     // Set cookie
-    res.cookie('token', appToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      path: '/',
-      domain: process.env.NODE_ENV === 'production' 
-        ? new URL(process.env.CORS_ORIGIN).hostname.replace('www.', '') // Use root domain
-        : undefined // Development (localhost)
-    });
+   app.use(
+  cookieSession({
+    name: "session",
+    keys: [process.env.COOKIE_SECRET], // Set this in your `.env`
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: "none",
+    secure: true,
+    httpOnly: true,
+  })
+);
 
     res.json({ 
       user: {
@@ -425,7 +428,11 @@ app.post('/user/auth/google', async (req, res) => {
 
 // Token verification endpoint
 app.get('/user/auth/verify', authenticateToken, (req, res) => {
-  res.json({ user: req.user });
+  if (!req.session.user) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  res.status(200).json({ user: req.session.user });
 });
 
 // Logout endpoint
