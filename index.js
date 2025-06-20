@@ -31,22 +31,31 @@ app.use(helmet({
   }
 }));
 
+
+
+
+
 // app.use(cors({
-//   origin: process.env.CORS_ORIGIN || 'http://localhost:3000', // Be specific in production
+//   origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
 //   methods: ['GET', 'POST', 'PUT', 'DELETE'],
 //   allowedHeaders: ['Content-Type', 'Authorization'],
-//   credentials: true // This is crucial
+//   credentials: true
 // }));
 
 
 
-
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: [
+    process.env.CORS_ORIGIN, 
+    'http://localhost:3000'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true,
+  exposedHeaders: ['set-cookie']
 }));
+
+
 
 
 app.use(cookieParser());
@@ -56,42 +65,6 @@ app.use(morgan('dev'));
 // Token verification middleware
 
 
-// const authenticateToken = async (req, res, next) => {
-//   // Check both cookies and Authorization header
-//   const token = req.cookies?.token || req.headers['authorization']?.split(' ')[1];
-  
-//   if (!token) {
-//     return res.status(401).json({ error: 'Authentication required' });
-//   }
-
-//   try {
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-//     // Get user from database
-//     const [user] = await pool.execute(
-//       "SELECT id, email, name, picture FROM users WHERE id = ?",
-//       [decoded.userId]
-//     );
-    
-//     if (!user[0]) {
-//       return res.status(403).json({ error: 'User not found' });
-//     }
-
-//     req.user = user[0];
-//     next();
-//   } catch (err) {
-//     console.error('Token verification error:', err);
-    
-//     // Clear invalid token
-//     res.clearCookie('token');
-    
-//     if (err.name === 'TokenExpiredError') {
-//       return res.status(401).json({ error: 'Session expired' });
-//     }
-    
-//     return res.status(403).json({ error: 'Invalid token' });
-//   }
-// };
 
 
 const authenticateToken = async (req, res, next) => {
@@ -190,14 +163,28 @@ app.post('/user/auth/google', async (req, res) => {
     );
 
     // Set secure, HTTP-only cookie
-  res.cookie('token', appToken, {
+//   res.cookie('token', appToken, {
+//   httpOnly: true,
+//   secure: process.env.NODE_ENV === 'production', // true in production
+//   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+//   maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+//   path: '/',
+//   domain: process.env.COOKIE_DOMAIN // Set this in production
+// });
+
+
+
+res.cookie('token', appToken, {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production', // true in production
+  secure: process.env.NODE_ENV === 'production',
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  maxAge: 30 * 24 * 60 * 60 * 1000,
   path: '/',
-  domain: process.env.COOKIE_DOMAIN // Set this in production
+  domain: process.env.NODE_ENV === 'production' 
+    ? '.onrender.com' // Production domain
+    : undefined // Development (localhost)
 });
+
 
     res.json({ 
     user: {
