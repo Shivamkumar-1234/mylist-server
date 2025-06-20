@@ -224,6 +224,14 @@
 
 
 
+
+
+
+
+
+
+
+
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -258,10 +266,24 @@ app.use(
 );
 
 // --- CORS ---
+const allowedOrigins = [
+  "https://my-list-dun.vercel.app", 
+  "http://localhost:3000"
+];
+
 app.use(
   cors({
-    origin: ["https://my-list-dun.vercel.app", "http://localhost:3000"],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
+    exposedHeaders: ["set-cookie"],
   })
 );
 
@@ -356,11 +378,17 @@ app.post("/user/auth/google", async (req, res) => {
       { expiresIn: "30d" }
     );
 
+    // Set cookie with proper domain and secure settings
+    const isProduction = process.env.NODE_ENV === "production";
+    const domain = isProduction ? ".vercel.app" : undefined;
+
     res.cookie("token", appToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: "None",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      domain: domain,
+      path: "/",
     });
 
     res.json({
@@ -384,11 +412,15 @@ app.get("/user/auth/verify", authenticateToken, (req, res) => {
 
 // --- Logout ---
 app.post("/user/auth/logout", (req, res) => {
+  const isProduction = process.env.NODE_ENV === "production";
+  const domain = isProduction ? ".vercel.app" : undefined;
+
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     path: "/",
+    domain: domain,
   });
   res.status(200).json({ message: "Logged out successfully" });
 });
