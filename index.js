@@ -45,38 +45,29 @@ app.use(helmet({
 
 
 
+
+// app.use(cors({
+//   origin: [
+//     process.env.CORS_ORIGIN, 
+//     'https://my-list-dun.vercel.app',
+//     'http://localhost:3000'
+//   ],
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//   allowedHeaders: ['Content-Type', 'Authorization'],
+//   credentials: true,
+//   exposedHeaders: ['set-cookie']
+// }));
+
+
+
 app.use(cors({
-  origin: [
-    process.env.CORS_ORIGIN, 
-    'https://my-list-dun.vercel.app',
-    'http://localhost:3000'
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization',
-    'Cache-Control',
-    'Pragma',
-    'Expires'
-  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
   exposedHeaders: ['set-cookie']
 }));
 
-// Handle OPTIONS requests
-app.options('*', cors());
 
-// Update cookie settings in Google auth endpoint
-res.cookie('token', appToken, {
-  httpOnly: true,
-  secure: true, // Always true since we're using HTTPS
-  sameSite: 'none',
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-  path: '/',
-  domain: process.env.NODE_ENV === 'production' 
-    ? 'mylist-server.onrender.com' // Use exact domain
-    : undefined // Development (localhost)
-});
 
 
 app.use(cookieParser());
