@@ -47,7 +47,8 @@ app.use(helmet({
 app.use(cors({
   origin: [
     process.env.CORS_ORIGIN, 
-    'https://my-list-dun.vercel.app'
+    'https://my-list-dun.vercel.app',
+    'http://localhost:3000'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -174,16 +175,19 @@ app.post('/user/auth/google', async (req, res) => {
 
 
 
+
 res.cookie('token', appToken, {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  maxAge: 30 * 24 * 60 * 60 * 1000,
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   path: '/',
   domain: process.env.NODE_ENV === 'production' 
-    ? 'https://mylist-server.onrender.com' // Production domain
+    ? '.onrender.com' // Use parent domain for cookies to work across subdomains
     : undefined // Development (localhost)
 });
+
+
 
 
     res.json({ 

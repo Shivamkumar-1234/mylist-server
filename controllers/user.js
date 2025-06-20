@@ -37,6 +37,44 @@ const jikanPerSecondLimiter = (req, res, next) => {
 };
 
 // Updated authenticate middleware
+
+
+// const authenticate = async (req, res, next) => {
+//   const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
+
+//   if (!token) {
+//     return res.status(401).json({ error: "Authentication required" });
+//   }
+
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+//     // Verify user exists in database
+//     const [user] = await pool.execute(
+//       "SELECT id, email, name, picture FROM users WHERE id = ?",
+//       [decoded.userId]
+//     );
+
+//     if (!user[0]) {
+//       return res.status(403).json({ error: "User not found" });
+//     }
+
+//     req.user = user[0];
+//     next();
+//   } catch (err) {
+//     console.error("Token verification error:", err);
+
+//     if (err.name === "TokenExpiredError") {
+//       return res.status(401).json({ error: "Session expired" });
+//     }
+
+//     return res.status(403).json({ error: "Invalid token" });
+//   }
+// };
+
+
+
+// Update the authenticate middleware
 const authenticate = async (req, res, next) => {
   const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
@@ -54,6 +92,13 @@ const authenticate = async (req, res, next) => {
     );
 
     if (!user[0]) {
+      // Clear invalid token
+      res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        path: '/'
+      });
       return res.status(403).json({ error: "User not found" });
     }
 
@@ -61,6 +106,14 @@ const authenticate = async (req, res, next) => {
     next();
   } catch (err) {
     console.error("Token verification error:", err);
+    
+    // Clear invalid token
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      path: '/'
+    });
 
     if (err.name === "TokenExpiredError") {
       return res.status(401).json({ error: "Session expired" });
@@ -69,6 +122,11 @@ const authenticate = async (req, res, next) => {
     return res.status(403).json({ error: "Invalid token" });
   }
 };
+
+
+
+
+
 
 // Anime endpoints
 
