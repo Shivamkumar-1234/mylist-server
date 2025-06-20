@@ -75,7 +75,13 @@ const jikanPerSecondLimiter = (req, res, next) => {
 
 
 // Update the authenticate middleware
+
+
 const authenticate = async (req, res, next) => {
+  // Set CORS headers for all authenticated requests
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
   const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
   if (!token) {
@@ -92,11 +98,10 @@ const authenticate = async (req, res, next) => {
     );
 
     if (!user[0]) {
-      // Clear invalid token
       res.clearCookie('token', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: true,
+        sameSite: 'none',
         path: '/'
       });
       return res.status(403).json({ error: "User not found" });
@@ -107,11 +112,10 @@ const authenticate = async (req, res, next) => {
   } catch (err) {
     console.error("Token verification error:", err);
     
-    // Clear invalid token
     res.clearCookie('token', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: true,
+      sameSite: 'none',
       path: '/'
     });
 
@@ -122,8 +126,6 @@ const authenticate = async (req, res, next) => {
     return res.status(403).json({ error: "Invalid token" });
   }
 };
-
-
 
 
 
