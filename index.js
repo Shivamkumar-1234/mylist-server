@@ -16,7 +16,7 @@ app.use(morgan("dev"));
 
 // Enhanced CORS configuration
 const allowedOrigins = [
-  "https://my-list-dun.vercel.app",
+  "https://my-list-alpha.vercel.app",
   "http://localhost:3000",
 ];
 
