@@ -36,53 +36,9 @@ const jikanPerSecondLimiter = (req, res, next) => {
   next();
 };
 
-// Updated authenticate middleware
-
-
-// const authenticate = async (req, res, next) => {
-//   const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
-
-//   if (!token) {
-//     return res.status(401).json({ error: "Authentication required" });
-//   }
-
-//   try {
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-//     // Verify user exists in database
-//     const [user] = await pool.execute(
-//       "SELECT id, email, name, picture FROM users WHERE id = ?",
-//       [decoded.userId]
-//     );
-
-//     if (!user[0]) {
-//       return res.status(403).json({ error: "User not found" });
-//     }
-
-//     req.user = user[0];
-//     next();
-//   } catch (err) {
-//     console.error("Token verification error:", err);
-
-//     if (err.name === "TokenExpiredError") {
-//       return res.status(401).json({ error: "Session expired" });
-//     }
-
-//     return res.status(403).json({ error: "Invalid token" });
-//   }
-// };
-
-
-
-// Update the authenticate middleware
-
-
 const authenticate = async (req, res, next) => {
-  // Set CORS headers for all authenticated requests
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: "Authentication required" });
@@ -90,20 +46,13 @@ const authenticate = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Verify user exists in database
+    
     const [user] = await pool.execute(
-      "SELECT id, email, name, picture FROM users WHERE id = ?",
+      "SELECT id, email, name FROM users WHERE id = ?",
       [decoded.userId]
     );
 
     if (!user[0]) {
-      res.clearCookie('token', {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/'
-      });
       return res.status(403).json({ error: "User not found" });
     }
 
@@ -112,35 +61,20 @@ const authenticate = async (req, res, next) => {
   } catch (err) {
     console.error("Token verification error:", err);
     
-    res.clearCookie('token', {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      path: '/'
-    });
-
     if (err.name === "TokenExpiredError") {
       return res.status(401).json({ error: "Session expired" });
     }
-
     return res.status(403).json({ error: "Invalid token" });
   }
 };
 
-
-
-
 // Anime endpoints
-
 const animeSearch = async (req, res) => {
   try {
     const { query, year, page = 1, sort } = req.query;
     const cacheKey = `${query}-${year}-${page}-${sort}`;
 
-    if (
-      cache[cacheKey] &&
-      Date.now() - cache[cacheKey].timestamp < CACHE_EXPIRY
-    ) {
+    if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_EXPIRY) {
       return res.json(cache[cacheKey].data);
     }
 
@@ -148,7 +82,6 @@ const animeSearch = async (req, res) => {
 
     if (query) {
       url += `&q=${encodeURIComponent(query)}`;
-      // For alphabetical sorting when searching by single character
       if (query.length === 1 && sort === "asc") {
         url += `&order_by=title&sort=asc`;
       }
@@ -181,14 +114,9 @@ const animeSearch = async (req, res) => {
 const fetchAllAnime = async (req, res) => {
   try {
     const { sort, year, page = 1 } = req.query;
-    const cacheKey = `all-anime-${sort || "default"}${
-      year ? `-${year}` : ""
-    }-page-${page}`;
+    const cacheKey = `all-anime-${sort || "default"}${year ? `-${year}` : ""}-page-${page}`;
 
-    if (
-      cache[cacheKey] &&
-      Date.now() - cache[cacheKey].timestamp < CACHE_EXPIRY
-    ) {
+    if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_EXPIRY) {
       return res.json(cache[cacheKey].data);
     }
 
@@ -231,10 +159,7 @@ const animeDetails = async (req, res) => {
     const { id } = req.params;
     const cacheKey = `anime-${id}`;
 
-    if (
-      cache[cacheKey] &&
-      Date.now() - cache[cacheKey].timestamp < CACHE_EXPIRY
-    ) {
+    if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_EXPIRY) {
       return res.json(cache[cacheKey].data);
     }
 
@@ -255,24 +180,20 @@ const animeDetails = async (req, res) => {
     console.error("Jikan API error:", error.message);
     const status = error.response?.status || 500;
     res.status(status).json({
-      error:
-        status === 504 ? "Request timeout" : "Failed to fetch anime details",
+      error: status === 504 ? "Request timeout" : "Failed to fetch anime details",
     });
   }
 };
 
 // Favorites endpoints
-
 const addFavorite = async (req, res) => {
   try {
     const { userId, animeId, animeData } = req.body;
 
-    // Verify the requesting user matches the token
     if (req.user.id !== parseInt(userId)) {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
-    // Check if already favorited
     const [existing] = await pool.execute(
       "SELECT id FROM favorites WHERE user_id = ? AND anime_id = ?",
       [userId, animeId]
@@ -286,7 +207,6 @@ const addFavorite = async (req, res) => {
       });
     }
 
-    // Store essential anime data
     const animeDataToStore = {
       mal_id: animeId,
       title: animeData.title,
@@ -323,27 +243,78 @@ const addFavorite = async (req, res) => {
   }
 };
 
+// const getFavorites = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+
+//     if (req.user.id !== parseInt(userId)) {
+//       return res.status(403).json({ error: "Unauthorized" });
+//     }
+
+//     const [rows] = await pool.execute(
+//       "SELECT anime_id, anime_data FROM favorites WHERE user_id = ? order by created_at DESC",
+//       [userId]
+//     );
+
+//     const favorites = rows.map((row) => {
+//       const data = JSON.parse(row.anime_data);
+//       return {
+//         ...data,
+//         mal_id: row.anime_id,
+//         id: row.anime_id,
+//       };
+//     });
+
+//     res.json(favorites);
+//   } catch (error) {
+//     console.error("Database error:", error);
+//     res.status(500).json({
+//       error: "Failed to fetch favorites",
+//       details: error.message,
+//     });
+//   }
+// };
+
+
+
 const getFavorites = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Verify the requesting user matches the token
     if (req.user.id !== parseInt(userId)) {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
     const [rows] = await pool.execute(
-      "SELECT anime_id, anime_data FROM favorites WHERE user_id = ? order by created_at DESC",
+      "SELECT anime_id, anime_data FROM favorites WHERE user_id = ? ORDER BY created_at DESC",
       [userId]
     );
 
+    // Properly parse the anime_data and handle potential errors
     const favorites = rows.map((row) => {
-      const data = JSON.parse(row.anime_data);
-      return {
-        ...data,
-        mal_id: row.anime_id,
-        id: row.anime_id, // for backward compatibility
-      };
+      try {
+        const data = typeof row.anime_data === 'string' ? 
+          JSON.parse(row.anime_data) : 
+          row.anime_data;
+        
+        return {
+          ...data,
+          mal_id: row.anime_id,
+          id: row.anime_id,
+        };
+      } catch (parseError) {
+        console.error("Error parsing anime_data:", parseError);
+        return {
+          mal_id: row.anime_id,
+          id: row.anime_id,
+          title: "Unknown Title",
+          images: { jpg: { image_url: "" } },
+          score: 0,
+          members: 0,
+          year: null,
+          status: "Unknown"
+        };
+      }
     });
 
     res.json(favorites);
@@ -356,11 +327,14 @@ const getFavorites = async (req, res) => {
   }
 };
 
+
+
+
+
 const deleteFavorite = async (req, res) => {
   try {
     const { userId, animeId } = req.params;
 
-    // Verify the requesting user matches the token
     if (req.user.id !== parseInt(userId)) {
       return res.status(403).json({ error: "Unauthorized" });
     }

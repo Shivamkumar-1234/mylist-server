@@ -5,13 +5,13 @@ const userController = require("../controllers/user");
 
 // Rate limiters
 const jikanRateLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 55, // Jikan allows 60/minute - we leave a 5 request buffer
+  windowMs: 60 * 1000,
+  max: 55,
   message: { error: "Too many requests to Jikan API. Please try again later." },
   headers: true,
 });
 
-// Anime routes with rate limiting
+// Anime routes
 router.get(
   "/anime/search",
   jikanRateLimiter,
@@ -33,7 +33,7 @@ router.get(
   userController.animeDetails
 );
 
-// Favorites routes with authentication
+// Favorites routes
 router.post(
   "/favorites",
   userController.authenticate,
